@@ -22,6 +22,14 @@ struct Product {
     listings: Vec<String>,
 }
 
+#[derive(Serialize,Deserialize,Debug)]
+struct Listing {
+    title: String,
+    manufacturer: String,
+    currency: String,
+    price: String,
+}
+
 fn read_objects<T: serde::de::Deserialize>(file_path: &str) -> Result<Vec<T>, SortableError> {
     let mut f = try!(File::open(file_path));
     let mut file_contents = String::new();
@@ -46,6 +54,16 @@ fn main() {
 
     println!("Successfully read {} products", all_products.len());
     for p in all_products.iter().take(5) {
+        println!("{:?}", p);
+    }
+
+    let all_listings: Vec<Listing> = match read_objects("../listings.txt") {
+        Ok(listings) => listings,
+        Err(e) => panic!("Error reading listings: {}", e),
+    };
+
+    println!("Successfully read {} listings", all_listings.len());
+    for p in all_listings.iter().take(5) {
         println!("{:?}", p);
     }
 }
