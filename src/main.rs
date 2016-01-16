@@ -4,11 +4,10 @@
 extern crate serde;
 extern crate serde_json;
 
-use std::io;
 use std::io::prelude::*;
 use std::fs::File;
 
-use error::{SortableError};
+use error::SortableError;
 
 pub mod error;
 
@@ -19,32 +18,34 @@ struct Product {
     model: String,
     family: String,
     #[serde(rename="announced-date")]
-    announced_date: String
+    announced_date: String,
+    listings: Vec<String>,
 }
 
-fn read_products(products_path: &str) -> Result<Vec<Product>, SortableError> {
-    let mut f = try!(File::open(products_path));
-    let mut file_contents = String::from("["); // since the text file only contains lines of objects, but no array
+fn read_objects<T: serde::de::Deserialize>(file_path: &str) -> Result<Vec<T>, SortableError> {
+    let mut f = try!(File::open(file_path));
+    let mut file_contents = String::new();
 
     try!(f.read_to_string(&mut file_contents));
 
-    file_contents.push_str("]");
-
-    let all_products: Vec<Product> = try!(serde_json::from_str(&file_contents));
-    Ok(all_products)
-/*
-    match all_products {
-        Ok(ap) => Ok(ap),
-        Err(ref e) => SortableError::JsonError(e)
-    }*/
+    // map each line in the file to a new object
+    // TODO: work out how to handle errors here???
+    let all_objects: Vec<T> = file_contents.lines()
+                                           .map(|line| serde_json::from_str(&line))
+                                           .filter(|o| o.is_ok())
+                                           .map(|o| o.unwrap())
+                                           .collect();
+    Ok(all_objects)
 }
 
 fn main() {
-    println!("Hello, world!");
-    
-    let all_products = match read_products("../products.txt") {
+    let all_products: Vec<Product> = match read_objects("../products.txt") {
         Ok(products) => products,
-        Err(e) => panic!("Error reading products: {}", e)
+        Err(e) => panic!("Error reading products: {}", e),
     };
 
+    println!("Successfully read {} products", all_products.len());
+    for p in all_products.iter().take(5) {
+        println!("{:?}", p);
+    }
 }

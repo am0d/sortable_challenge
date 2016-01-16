@@ -23,7 +23,7 @@ impl error::Error for SortableError {
     fn description(&self) -> &str {
         match *self {
             SortableError::IOError(ref err) => err.description(),
-            SortableError::JsonError(ref err) => err.description()
+            SortableError::JsonError(ref err) => err.description(),
         }
     }
 
