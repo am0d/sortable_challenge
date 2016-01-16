@@ -81,9 +81,12 @@ fn match_listings_to_products(all_products: &mut [Product], all_listings: Vec<Li
         let mut best_match: (Option<&mut Product>, usize) = (None, 0);
         for product in all_products.iter_mut() {
             let matching_words = (listing.title)[..]
-                                      .split_whitespace()
-                                      .filter(|word| (product.keywords)[..].contains(&String::from(word.to_lowercase())))
-                                      .count();
+                                     .split_whitespace()
+                                     .filter(|word| {
+                                         (product.keywords)[..]
+                                             .contains(&String::from(word.to_lowercase()))
+                                     })
+                                     .count();
             if matching_words == product.keywords.len() {
                 best_match = match best_match {
                     (None, _) if matching_words > 0 => (Some(product), matching_words),
@@ -95,7 +98,7 @@ fn match_listings_to_products(all_products: &mut [Product], all_listings: Vec<Li
 
         match best_match {
             (Some(ref mut product), _) => product.listings.push(listing),
-            (None, _) => println!("No matching product found for {:?}", listing)
+            (None, _) => println!("No matching product found for {:?}", listing),
         }
     }
 }
@@ -107,7 +110,7 @@ fn main() {
     };
 
     // sort the products by manufacturer
-    //&mut all_products[..].sort_by(|p1, p2| p1.manufacturer.cmp(&p2.manufacturer));
+    // &mut all_products[..].sort_by(|p1, p2| p1.manufacturer.cmp(&p2.manufacturer));
 
     println!("Successfully read {} products", all_products.len());
     for p in all_products.iter().take(5) {
