@@ -1,11 +1,12 @@
 #![feature(custom_derive, plugin, custom_attribute)]
-#![plugin(serde_macros)]
+#![plugin(clippy,serde_macros)]
 
 extern crate serde;
 extern crate serde_json;
 
 use std::io::prelude::*;
 use std::fs::File;
+use std::collections::{BTreeMap, BTreeSet};
 
 use error::SortableError;
 
@@ -23,9 +24,26 @@ struct Product {
     #[serde(rename="announced-date",skip_serializing)]
     announced_date: String,
     listings: Vec<Listing>,
-    #[serde(skip_serializing)]
-    keywords: Vec<String>,
 }
+
+impl PartialEq for Product {
+    fn eq(&self, other: &Self) -> bool {
+        self.product_name == other.product_name
+    }
+}
+
+impl PartialOrd for Product {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.product_name.cmp(&other.product_name))
+    }
+}
+
+impl Ord for Product {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.product_name.cmp(&other.product_name)
+    }
+}
+impl Eq for Product {}
 
 #[derive(Serialize,Deserialize,Debug)]
 struct Listing {
@@ -63,44 +81,74 @@ fn write_objects<T: serde::ser::Serialize>(file_path: &str,
     Ok(())
 }
 
-fn match_listings_to_products(all_products: &mut [Product], all_listings: Vec<Listing>) {
+fn match_listings_to_products(all_products: &mut [Product], all_listings: Vec<Listing>) -> u32 {
     println!(" -> Preprocessing the products ...");
-    for product in all_products.iter_mut() {
+    let mut product_map = BTreeMap::new();
+    for product in all_products.iter() {
         // pre-process the keywords
-        product.keywords = format!("{} {} {}",
-                                   product.manufacturer,
-                                   product.family,
-                                   product.model)
-                               .split_whitespace()
-                               .map(|s| String::from(s.to_lowercase()))
-                               .collect();
-        &mut (product.keywords)[..].sort(); // sort the keywords alphabetically
+        for keyword in format!("{} {} {}",
+                               product.manufacturer,
+                               product.family,
+                               product.model)
+                           .split_whitespace()
+                           .map(|s| String::from(s.to_lowercase())) {
+            product_map.entry(keyword).or_insert(vec![]).push(product);
+        }
     }
     println!(" -> Matching listings ...");
+    let mut matched_products_count = 0u32;
+    let mut word_count = BTreeMap::new();
+
     for listing in all_listings {
         let mut best_match: (Option<&mut Product>, usize) = (None, 0);
-        for product in all_products.iter_mut() {
-            let matching_words = (listing.title)[..]
-                                     .split_whitespace()
-                                     .filter(|word| {
-                                         (product.keywords)[..]
-                                             .contains(&String::from(word.to_lowercase()))
-                                     })
-                                     .count();
-            if matching_words == product.keywords.len() {
-                best_match = match best_match {
-                    (None, _) if matching_words > 0 => (Some(product), matching_words),
-                    (_, score) if matching_words > score => (Some(product), matching_words),
-                    _ => best_match,
-                };
+        let mut matched_products = BTreeSet::new();
+
+        for listing_keyword in (listing.title)[..]
+                                   .split(|c| c == ' ' || c == '/')
+                                   .map(|s| s.to_lowercase()) {
+            let products_for_keyword = product_map.get(&listing_keyword);
+
+            let current_product_count = matched_products.len();
+
+            matched_products = match products_for_keyword {
+                None => matched_products,
+                Some(products) if matched_products.is_empty() => {
+                    for p in products.iter() {
+                        matched_products.insert(p);
+                    }
+                    matched_products
+                },
+                Some(products) => {
+                    let mut products_set = BTreeSet::new();
+                    for p in products.iter() {
+                        products_set.insert(p);
+                    }
+                    let subset = 
+                        matched_products.intersection(&products_set)
+                    ;
+                    let mut matched_products = BTreeSet::new();
+                    for p in subset {
+                        matched_products.insert(*p);
+                    }
+                    if current_product_count > 0 && matched_products.is_empty() {
+                        *word_count.entry(listing_keyword).or_insert(0) += 1;
+                    }
+                    matched_products
+                }
             }
         }
 
-        match best_match {
-            (Some(ref mut product), _) => product.listings.push(listing),
-            (None, _) => println!("No matching product found for {:?}", listing),
+        if matched_products.len() == 1 {
+            for product in matched_products.into_iter() {
+                //(*product).listings.push(listing);
+                matched_products_count += 1;
+            }
         }
     }
+
+    println!("({}), {:?}", word_count.len(), word_count);
+
+    matched_products_count
 }
 
 fn main() {
@@ -128,7 +176,11 @@ fn main() {
     }
 
     println!("Matching listings to products ...");
-    match_listings_to_products(&mut all_products[..], all_listings);
+    let total_listings = all_listings.len();
+    let matched_listings = match_listings_to_products(&mut all_products[..], all_listings);
+    println!("\tMatched {} out of {} listings",
+             matched_listings,
+             total_listings);
 
     println!("Writing results to file ...");
     // We call unwrap() as a lazy way to show an error

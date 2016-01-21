@@ -2,6 +2,7 @@
 name = "sortable_challenge"
 version = "0.1.0"
 dependencies = [
+ "clippy 0.0.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_macros 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -20,6 +21,14 @@ dependencies = [
 name = "aster"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "clippy"
+version = "0.0.35"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "unicode-normalization 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "libc"
@@ -105,6 +114,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "serde_codegen 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "unicode-normalization"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "winapi"

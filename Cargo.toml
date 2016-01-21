@@ -5,6 +5,7 @@ authors = ["Damien Schoof <damien.schoof@gmail.com>"]
 
 
 [dependencies]
+clippy = "*"
 serde = "*"
 serde_json = "*"
 serde_macros = "*"
